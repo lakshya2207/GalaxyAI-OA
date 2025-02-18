@@ -154,7 +154,7 @@ export default function CaptionGenerator() {
     }
   };
 
-  const handleAdvancedSettingChange = (key: keyof State, value: any) => {
+  const handleAdvancedSettingChange = (key:String, value: any) => {
     setState((prevState) => ({
       ...prevState,
       [key]: value,
