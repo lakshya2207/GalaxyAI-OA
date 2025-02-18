@@ -22,7 +22,6 @@ interface CloudinaryUploadResult {
   public_id: string;
   bytes: number;
   duration?: number
-  [key: string]: any
 }
 fal.config({
   credentials: process.env.FAL_KEY
