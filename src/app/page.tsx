@@ -31,19 +31,22 @@ interface VideoType {
   // any other properties of a video
 }
 export default function CaptionGenerator() {
-  const { user} = useUser();
+  const { user } = useUser();
   const [previous, setPrevious] = useState<VideoType[]>([]);
   const [responseData, setResponseData] = useState({});
   useEffect(() => {
     const getPrevious = async () => {
-      const response = await fetch(`/pages/api/upload-video/${user.id}`);
-      const json = await response.json();
-      setPrevious(json.videos);
+      if (user) {
+
+        const response = await fetch(`/pages/api/upload-video/${user.id}`);
+        const json = await response.json();
+        setPrevious(json.videos);
+      }
     };
-  
+
     getPrevious(); // Fetch previous videos when `user` changes
   }, [user]);
-  
+
   const [state, setState] = useState({
     isAdvancedOpen: false,
     videoFile: null,
