@@ -5,7 +5,7 @@ interface Video extends Document {
   originalVideoUrl: string;
   captionedVideoUrl: string;
   fileName: string;
-  downloadLink: { type: String},
+  downloadLink: { type: string},
   parameters: {
     refresh_interval: number;
     subtitlePosition: string;

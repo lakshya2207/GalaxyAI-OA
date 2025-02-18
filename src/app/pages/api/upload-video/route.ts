@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-const cloudinary = require('cloudinary').v2
+import { v2 as cloudinary } from 'cloudinary';
 import VideoModel from '../../../models/Video'; // Import the Mongoose model
 import { connectMongo } from '../../../../lib/mongo'; // Import MongoDB connection function
 import { fal } from "@fal-ai/client";

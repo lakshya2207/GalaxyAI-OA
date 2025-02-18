@@ -17,19 +17,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import {
   FileUploaderRegular,
   UploadCtxProvider,
 } from "@uploadcare/react-uploader";
 
 import "@uploadcare/react-uploader/core.css";
-import { ChevronDown, Upload, LoaderCircle } from "lucide-react";
+import { ChevronDown, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useToast } from "@/hooks/use-toast";
 
 export default function CaptionGenerator() {
-  const { user, isSignedIn } = useUser();
+  const { user} = useUser();
   // console.log('user', user.id);
   // const [user, setUser] = useState()
   // const getCurrentUser = async () => {
