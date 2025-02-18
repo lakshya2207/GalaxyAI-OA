@@ -67,7 +67,7 @@ export default function CaptionGenerator() {
 
 
   // Handle file selection from FileUploaderRegular
-  const handleFileUpload = (event: any) => {
+  const handleFileUpload = (event) => {
     console.log("event", event);
     setState((prevState) => ({
       ...prevState,
@@ -132,7 +132,7 @@ export default function CaptionGenerator() {
     }
   };
 
-  const handleAdvancedSettingChange = (key: string, value: any) => {
+  const handleAdvancedSettingChange = (key, value) => {
     setState((prevState) => ({
       ...prevState,
       [key]: value,
