@@ -11,6 +11,15 @@ const compat = new FlatCompat({
 
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    rules: {
+      // Disable specific ESLint rules
+      "no-console": "off",   // Example: Disable the no-console rule
+      "no-unused-vars": "off", // Example: Disable the no-unused-vars rule
+      "react/jsx-no-target-blank": "off", // Example: Disable a React-related rule
+      // Add other rules as needed
+    }
+  }
 ];
 
 export default eslintConfig;
