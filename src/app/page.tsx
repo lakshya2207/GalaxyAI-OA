@@ -21,7 +21,13 @@ import {
   FileUploaderRegular,
   UploadCtxProvider,
 } from "@uploadcare/react-uploader";
-
+interface FileUploadEvent {
+  successCount: number;
+  successEntries: Array<{
+    file: File;
+    cdnUrl: string;
+  }>;
+}
 import "@uploadcare/react-uploader/core.css";
 import { ChevronDown, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -70,13 +76,14 @@ export default function CaptionGenerator() {
 
 
   // Handle file selection from FileUploaderRegular
-  const handleFileUpload = (event) => {
+  const handleFileUpload = (event: FileUploadEvent) => {
     console.log("event", event);
+    
     setState((prevState) => ({
       ...prevState,
       isUploading: true,
     }));
-
+  
     if (event.successCount === 1) {
       setState((prevState) => ({
         ...prevState,
@@ -85,13 +92,12 @@ export default function CaptionGenerator() {
         uploadedFileURL: event.successEntries[0].cdnUrl,
       }));
     }
-
+  
     setState((prevState) => ({
       ...prevState,
       isUploading: false,
     }));
   };
-
   // Handle drag-and-drop file uploads
   const handleGenerateCaptions = async () => {
     if (!user) {
