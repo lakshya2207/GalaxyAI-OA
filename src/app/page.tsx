@@ -1,8 +1,8 @@
 "use client";
 import { useUser } from "@clerk/nextjs";
-import VideoDetailsModal from '@/components/ui/VideoDetailsModal';
+import VideoDetailsModal from "@/components/ui/VideoDetailsModal";
 import { Button } from "@/components/ui/button";
-import { TypeAnimation } from 'react-type-animation';
+import { TypeAnimation } from "react-type-animation";
 import {
   Collapsible,
   CollapsibleContent,
@@ -21,21 +21,17 @@ import {
   FileUploaderRegular,
   UploadCtxProvider,
 } from "@uploadcare/react-uploader";
-interface FileUploadEvent {
-  successCount: number;
-  successEntries: Array<{
-    file: File;
-    cdnUrl: string;
-  }>;
-}
 import "@uploadcare/react-uploader/core.css";
 import { ChevronDown, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
 interface VideoType {
-  id: string;
-  title: string;
-  // any other properties of a video
-}interface State {
+  _id: string;
+  originalVideoUrl: string;
+  captionedVideoUrl: string;
+}
+
+interface State {
   isAdvancedOpen: boolean;
   videoFile: File | null;
   uploadedFile: File | null;
@@ -53,14 +49,15 @@ interface VideoType {
   autoTranslate: boolean;
   subtitlePosition: string;
 }
+
 export default function CaptionGenerator() {
   const { user } = useUser();
   const [previous, setPrevious] = useState<VideoType[]>([]);
-  const [responseData, setResponseData] = useState({});
+  const [responseData, setResponseData] = useState<any>(null);
+
   useEffect(() => {
     const getPrevious = async () => {
       if (user) {
-
         const response = await fetch(`/pages/api/upload-video/${user.id}`);
         const json = await response.json();
         setPrevious(json.videos);
@@ -89,22 +86,19 @@ export default function CaptionGenerator() {
     subtitlePosition: "bottom",
   });
 
-  const uploaderRef = useRef<InstanceType<UploadCtxProvider> | null>(null);
-
+  const uploaderRef = useRef<UploadCtxProvider | null>(null);
 
   // Handle file selection from FileUploaderRegular
-  const handleFileUpload = (event: FileUploadEvent) => {
-    console.log("event", event);
-  
+  const handleFileUpload = (event: { successCount: number; successEntries: Array<{ file: File; cdnUrl: string }> }) => {
     setState((prevState) => ({
       ...prevState,
       isUploading: true,
     }));
-  
+
     if (event.successCount === 1) {
       const file = event.successEntries[0].file;
       const cdnUrl = event.successEntries[0].cdnUrl;
-  
+
       setState((prevState) => ({
         ...prevState,
         videoFile: file, // File type
@@ -112,13 +106,13 @@ export default function CaptionGenerator() {
         uploadedFileURL: cdnUrl, // string type
       }));
     }
-  
+
     setState((prevState) => ({
       ...prevState,
       isUploading: false,
     }));
   };
-  
+
   // Handle drag-and-drop file uploads
   const handleGenerateCaptions = async () => {
     if (!user) {
@@ -138,10 +132,9 @@ export default function CaptionGenerator() {
     // Create FormData to send the video file to the backend
     const formData = new FormData();
     formData.append("file", state.videoFile); // Make sure this name is the same as what the backend expects
-    formData.append('data', JSON.stringify({ state }));
-    formData.append('userid', user.id)
+    formData.append("data", JSON.stringify({ state }));
+    formData.append("userid", user.id);
 
-    console.log('state', state);
     try {
       const response = await fetch("pages/api/upload-video", {
         method: "POST",
@@ -149,8 +142,7 @@ export default function CaptionGenerator() {
       });
 
       const data = await response.json();
-      console.log('data', data);
-      setResponseData(data)
+      setResponseData(data);
     } catch (error) {
       console.error("Error:", error);
       alert("Error uploading video.");
@@ -162,7 +154,7 @@ export default function CaptionGenerator() {
     }
   };
 
-  const handleAdvancedSettingChange = (key, value) => {
+  const handleAdvancedSettingChange = (key: keyof State, value: any) => {
     setState((prevState) => ({
       ...prevState,
       [key]: value,
@@ -171,7 +163,6 @@ export default function CaptionGenerator() {
 
   return (
     <>
-
       <div className="max-w-5xl mx-auto p-6">
         <h1 className="text-3xl font-bold text-center mb-2">
           AI Video Caption Generator
@@ -194,9 +185,8 @@ export default function CaptionGenerator() {
                   sourceList="local, camera, facebook, gdrive"
                   cameraModes="video"
                   classNameUploader="uc-light"
-                  pubkey='990976fc9d317856dc5b'
-                >
-                </FileUploaderRegular>
+                  pubkey="990976fc9d317856dc5b"
+                />
               </div>
             </div>
 
@@ -218,7 +208,6 @@ export default function CaptionGenerator() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="bottom">Bottom</SelectItem>
-                  <SelectItem value="top">Center</SelectItem>
                   <SelectItem value="top">Top</SelectItem>
                 </SelectContent>
               </Select>
@@ -246,11 +235,11 @@ export default function CaptionGenerator() {
                       <SelectValue placeholder="Select font" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value='Arial' >Arial</SelectItem>
-                      <SelectItem value='Standard' >Standard</SelectItem>
-                      <SelectItem value='Garamond' >Garamond</SelectItem>
-                      <SelectItem value='Times New Roman' >Times New Roman</SelectItem>
-                      <SelectItem value='Georgia' >Georgia</SelectItem>
+                      <SelectItem value="Arial">Arial</SelectItem>
+                      <SelectItem value="Standard">Standard</SelectItem>
+                      <SelectItem value="Garamond">Garamond</SelectItem>
+                      <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                      <SelectItem value="Georgia">Georgia</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -264,24 +253,6 @@ export default function CaptionGenerator() {
                   />
                 </div>
 
-                {/* <div>
-          <Label>Highlight Color</Label>
-          <Input
-            type="text"
-            value={state.highlightColor}
-            onChange={(e) => handleAdvancedSettingChange("highlightColor", e.target.value)}
-          />
-        </div> */}
-
-                {/* <div>
-          <Label>Outline Color</Label>
-          <Input
-            type="text"
-            value={state.outlineColor}
-            onChange={(e) => handleAdvancedSettingChange("outlineColor", e.target.value)}
-          />
-        </div> */}
-
                 <div>
                   <Label>Font Size</Label>
                   <Input
@@ -290,59 +261,6 @@ export default function CaptionGenerator() {
                     onChange={(e) => handleAdvancedSettingChange("fontSize", parseInt(e.target.value))}
                   />
                 </div>
-
-                {/* <div>
-          <Label>Maximum Characters</Label>
-          <Input
-            type="number"
-            value={state.maxCharacters}
-            onChange={(e) => handleAdvancedSettingChange("maxCharacters", parseInt(e.target.value))}
-          />
-        </div> */}
-
-                {/* <div>
-          <Label>Background Opacity</Label>
-          <Input
-            type="number"
-            value={state.backgroundOpacity}
-            onChange={(e) => handleAdvancedSettingChange("backgroundOpacity", parseFloat(e.target.value))}
-            min={0}
-            max={1}
-            step={0.1}
-          />
-        </div> */}
-
-                {/* <div>
-          <Label>Outline Width</Label>
-          <Input
-            type="number"
-            value={state.outlineWidth}
-            onChange={(e) => handleAdvancedSettingChange("outlineWidth", parseFloat(e.target.value))}
-            step={0.1}
-          />
-        </div>
-
-        <div>
-          <Label>Letter Spacing</Label>
-          <Input
-            type="number"
-            value={state.letterSpacing}
-            onChange={(e) => handleAdvancedSettingChange("letterSpacing", parseInt(e.target.value))}
-          />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label>Auto Translate to English</Label>
-            <p className="text-xs text-gray-500">
-              Automatically translate subtitles to English
-            </p>
-          </div>
-          <Switch
-            checked={state.autoTranslate}
-            onCheckedChange={(checked) => handleAdvancedSettingChange("autoTranslate", checked)}
-          />
-        </div> */}
               </CollapsibleContent>
             </Collapsible>
 
@@ -400,11 +318,11 @@ export default function CaptionGenerator() {
                 <LoaderCircle className="loader-circle mx-auto my-4" />
                 <TypeAnimation
                   sequence={[
-                    'Generating captions for your video...',
+                    "Generating captions for your video...",
                     3000,
-                    'Do not close the window...',
+                    "Do not close the window...",
                     3000,
-                    'It may take upto 2 minutes...',
+                    "It may take up to 2 minutes...",
                     3000,
                   ]}
                   wrapper="p"
@@ -422,8 +340,9 @@ export default function CaptionGenerator() {
           </div>
         </div>
       </div>
-      <div className='mx-6'>
-        {previous && previous.map((video) => (
+
+      <div className="mx-6">
+        {previous.map((video) => (
           <div key={video._id}>
             <hr />
             <div className="flex flex-col md:flex-row justify-around mb-2 space-y-4 md:space-y-0">
@@ -457,7 +376,6 @@ export default function CaptionGenerator() {
           </div>
         ))}
       </div>
-
     </>
   );
 }
