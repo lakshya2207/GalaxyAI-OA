@@ -25,38 +25,25 @@ import {
 import "@uploadcare/react-uploader/core.css";
 import { ChevronDown, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-
+interface VideoType {
+  id: string;
+  title: string;
+  // any other properties of a video
+}
 export default function CaptionGenerator() {
   const { user} = useUser();
-  // console.log('user', user.id);
-  // const [user, setUser] = useState()
-  // const getCurrentUser = async () => {
-  //   if (user) {
-  //     setUser(user)
-  //     console.log('user', user);
-  //   }
-  // }
-  // useEffect(() => {
-  //   getCurrentUser();
-  // }, [])
-
-  const [previous, setPrevious] = useState();
+  const [previous, setPrevious] = useState<VideoType[]>([]);
   const [responseData, setResponseData] = useState({});
-  const getPrevious = async () => {
-    // console.log('user',user);
-   
-      
+  useEffect(() => {
+    const getPrevious = async () => {
       const response = await fetch(`/pages/api/upload-video/${user.id}`);
       const json = await response.json();
-      // console.log('json.videos', json.videos);
-      setPrevious(json.videos)
-    
-  }
-  useEffect(() => { getPrevious() }, [user])
-
-  // useEffect(() => {
-  //   console.log('previous', previous);
-  // }, [previous])
+      setPrevious(json.videos);
+    };
+  
+    getPrevious(); // Fetch previous videos when `user` changes
+  }, [user]);
+  
   const [state, setState] = useState({
     isAdvancedOpen: false,
     videoFile: null,
