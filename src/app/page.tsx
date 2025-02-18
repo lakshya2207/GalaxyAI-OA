@@ -35,6 +35,23 @@ interface VideoType {
   id: string;
   title: string;
   // any other properties of a video
+}interface State {
+  isAdvancedOpen: boolean;
+  videoFile: File | null;
+  uploadedFile: File | null;
+  uploadedFileURL: string | null;
+  isUploading: boolean;
+  fontStyle: string;
+  textColor: string;
+  highlightColor: string;
+  outlineColor: string;
+  fontSize: number;
+  maxCharacters: number;
+  backgroundOpacity: number;
+  outlineWidth: number;
+  letterSpacing: number;
+  autoTranslate: boolean;
+  subtitlePosition: string;
 }
 export default function CaptionGenerator() {
   const { user } = useUser();
@@ -53,7 +70,7 @@ export default function CaptionGenerator() {
     getPrevious(); // Fetch previous videos when `user` changes
   }, [user]);
 
-  const [state, setState] = useState({
+  const [state, setState] = useState<State>({
     isAdvancedOpen: false,
     videoFile: null,
     uploadedFile: null,
@@ -78,18 +95,21 @@ export default function CaptionGenerator() {
   // Handle file selection from FileUploaderRegular
   const handleFileUpload = (event: FileUploadEvent) => {
     console.log("event", event);
-    
+  
     setState((prevState) => ({
       ...prevState,
       isUploading: true,
     }));
   
     if (event.successCount === 1) {
+      const file = event.successEntries[0].file;
+      const cdnUrl = event.successEntries[0].cdnUrl;
+  
       setState((prevState) => ({
         ...prevState,
-        videoFile: event.successEntries[0].file,
-        uploadedFile: event.successEntries[0].file,
-        uploadedFileURL: event.successEntries[0].cdnUrl,
+        videoFile: file, // File type
+        uploadedFile: file,
+        uploadedFileURL: cdnUrl, // string type
       }));
     }
   
@@ -98,6 +118,7 @@ export default function CaptionGenerator() {
       isUploading: false,
     }));
   };
+  
   // Handle drag-and-drop file uploads
   const handleGenerateCaptions = async () => {
     if (!user) {
