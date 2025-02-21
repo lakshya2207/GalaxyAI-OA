@@ -18,12 +18,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  FileUploaderRegular,
-  UploadCtxProvider,
+  FileUploaderRegular
 } from "@uploadcare/react-uploader";
 import "@uploadcare/react-uploader/core.css";
 import { ChevronDown, LoaderCircle } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 interface VideoType {
   _id: string;
@@ -233,7 +232,7 @@ export default function CaptionGenerator() {
     formData.append("file", state.videoFile); // Make sure this name is the same as what the backend expects
     formData.append("data", JSON.stringify({ state }));
     try {
-      const response = await fetch("pages/api/upload-video", {
+      await fetch("pages/api/upload-video", {
         method: "POST",
         body: formData,
       });
@@ -272,7 +271,7 @@ export default function CaptionGenerator() {
       });
 
       // Handle the response as needed
-      const result = await response.json();
+      await response.json();
       // Process the result if necessary
     } catch (error) {
       console.error("Error:", error);
@@ -299,7 +298,7 @@ export default function CaptionGenerator() {
         method: "POST",
         body: formData,
       });
-      const data = await response.json()
+      await response.json()
       // setResponseData(data);
       setStep(0)
     } catch (error) {
@@ -463,7 +462,7 @@ export default function CaptionGenerator() {
             </Collapsible>
 
             <Button
-              disabled={state.isUploading} 
+              disabled={state.isUploading}
               onClick={handleGenerateCaptions} className="w-full bg-indigo-500 hover:bg-indigo-600">
               Generate Captions
             </Button>
