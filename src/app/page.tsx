@@ -304,11 +304,11 @@ export default function CaptionGenerator() {
     } catch (error) {
       console.error("Error:", error);
       alert("Error Saving Data video.");
-    } finally {
       setState((prevState) => ({
         ...prevState,
         isUploading: false,
       }));
+    } finally {
     }
 
 
@@ -470,7 +470,7 @@ export default function CaptionGenerator() {
 
           {/* Right Panel - Preview */}
           <div className="mx-auto w-full border bg-white mt-6 md:mt-0 ml-6 p-4 md:p-6 rounded-lg shadow-md flex flex-col md:flex-row items-center justify-center">
-            {responseData?.fileName ? (
+            {responseData?.fileName !='' ? (
               <>
                 <div className="captioned w-full md:w-auto grid space-y-4 md:space-y-0 md:grid-cols-1 md:max-w-3xl">
                   <Label className="mx-4 my-2 text-lg font-semibold text-slate-800 text-center md:text-left">Captioned Video</Label>
@@ -513,7 +513,7 @@ export default function CaptionGenerator() {
                 </div>
               </>
             ) : state.isUploading ? (
-              <div className="text-gray-600 text-center flex flex-col items-center">
+              <div className="text-gray-600 text-center w-full flex flex-col items-center">
                 <LoaderCircle className="loader-circle mx-auto my-4" />
                 <TypeAnimation
                   sequence={[
@@ -529,7 +529,7 @@ export default function CaptionGenerator() {
                   repeat={Infinity}
                   className="text-2xl mb-2"
                 />
-                <Progress value={(step + 1) * 25} />
+                <Progress className= 'mt-5 w-11/12' value={(step + 1) * 25} />
 
               </div>
             ) : (
