@@ -1,0 +1,9 @@
+{
+  "request_id": "1d270d48-a6ae-4f17-a4ec-fc048394dd72",
+  "gateway_request_id": "1d270d48-a6ae-4f17-a4ec-fc048394dd72",
+  "status": "OK",
+  "error": null,
+  "payload": {
+    "video_url": "https://v3.fal.media/files/koala/hUjoR4OmMsROMuVaso34W_3c515d52403f2dd0e6f4209e46c8e7d9578131ec8fdc25491f9e18c683168628_output.mp4"
+  }
+}

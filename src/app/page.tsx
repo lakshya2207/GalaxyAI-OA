@@ -30,6 +30,13 @@ interface VideoType {
   originalVideoUrl: string;
   captionedVideoUrl: string;
 }
+interface ResData {
+  originalVideoUrl: string;
+  captionedVideoUrl: string;
+  downloadLink: string;
+  fileName: string;
+
+}
 import { Progress } from "@/components/ui/progress"
 
 interface State {
@@ -53,31 +60,64 @@ interface State {
 
 export default function CaptionGenerator() {
   const { user, isSignedIn } = useUser();
+
   const [step, setStep] = useState(0)
   const [previous, setPrevious] = useState<VideoType[]>([]);
-  const [responseData, setResponseData] = useState<any>(null);
+  const [responseData, setResponseData] = useState<ResData>({
+    'originalVideoUrl': '',
+    'captionedVideoUrl': '',
+    'downloadLink': '',
+    'fileName': ''
+  });
+  useEffect(() => {
+    console.log('responseData', responseData);
+  }, [responseData])
+  useEffect(() => {
+    if (!loadingf && responseData.originalVideoUrl) {
+      handleGenerateCaptions2(responseData.originalVideoUrl);
+    }
+  }, [responseData.originalVideoUrl])
+  useEffect(() => {
+    if (responseData.downloadLink && responseData.originalVideoUrl) {
+      handleGenerateCaptions3();
+    }
+  }, [responseData.downloadLink, responseData.originalVideoUrl])
+  useEffect(() => {
+    if (responseData.downloadLink && responseData.originalVideoUrl && responseData.captionedVideoUrl) {
+      handleGenerateCaptions4();
+    }
+  }, [responseData.downloadLink, responseData.originalVideoUrl, responseData.captionedVideoUrl])
   useEffect(() => {
     // Connect to Socket.io server
     const socket = io();
 
     // Listen for the webhook event
     socket.on('webhookEvent1', (data) => {
-      if (step == 0) {
+      if (step === 0) {
         setStep(1);
         setResponseData({
           ...responseData,
-          originalVideoUrl: data.orgUrl,
+          originalVideoUrl: data.orgUrl || state.uploadedFileURL,
         });
         // alert("Step 1 done");
-        if (!loadingf) {
-          handleGenerateCaptions2(data.orgUrl);
-        }
+
       }
-      // This will show an alert when the event is triggered
     });
+    socket.on('webhookEvent3', (data) => {
+      console.log('data3', data);
+      setStep(4);
+      setResponseData((prevState) => ({
+        ...prevState,
+        captionedVideoUrl: data.captionedVideoUrl || responseData.downloadLink,
+      })
+      )
+      // alert("Step 1 done");    
+
+    });
+
     socket.on('webhookEvent2', (data) => {
       setLoadingf(false);
-
+      console.log('data', data);
       // Check if the message indicates quota exceeded
       if (data.message && data.message === 'Quota exceeded') {
         // Handle the quota exceeded scenario
@@ -89,6 +129,7 @@ export default function CaptionGenerator() {
         setStep(0); // Optionally reset the step if quota exceeded, or adjust flow as needed
         return; // Exit early if quota is exceeded
       }
+
       // Handle the case when video processing is done and we receive the download link
       if (data.downloadLink) {
         setResponseData((prevState) => ({
@@ -97,19 +138,20 @@ export default function CaptionGenerator() {
         }));
         setStep(2);
         // Proceed with the next steps after processing the video
-        handleGenerateCaptions3();
       }
     });
 
-    if (step == 3) {
-      return () => {
-        socket.disconnect(); // Clean up the socket connection on unmount
-      };
-    }
-  }, [step]);
+    // Clean up socket connection when the step reaches 3
+
+    return () => {
+      socket.disconnect(); // Clean up the socket connection on unmount
+    };
+
+  }, []);
   useEffect(() => {
     const getPrevious = async () => {
       if (user) {
+        localStorage.setItem('userid', user.id)
         const response = await fetch(`/pages/api/upload-video/${user.id}`);
         const json = await response.json();
         setPrevious(json.videos);
@@ -141,7 +183,6 @@ export default function CaptionGenerator() {
   useEffect(() => {
     console.log('state', state);
   }, [state])
-  const uploaderRef = useRef<UploadCtxProvider | null>(null);
 
   // Handle file selection from FileUploaderRegular
   const handleFileUpload = (event: { successCount: number; successEntries: Array<{ file: File; cdnUrl: string }> }) => {
@@ -170,6 +211,7 @@ export default function CaptionGenerator() {
   // Handle drag-and-drop file uploads
   const handleGenerateCaptions = async () => {
     console.log('isSignedIn', isSignedIn);
+    console.log('user', user);
     if (!isSignedIn) {
       alert("Please sign in to continue");
       return;
@@ -186,7 +228,7 @@ export default function CaptionGenerator() {
 
     // Create FormData to send the video file to the backend
     const formData = new FormData();
-    formData.append("userid", user.id);
+    formData.append("userid", localStorage.getItem('userid') || user?.id);
 
     formData.append("file", state.videoFile); // Make sure this name is the same as what the backend expects
     formData.append("data", JSON.stringify({ state }));
@@ -209,8 +251,8 @@ export default function CaptionGenerator() {
   };
   const [loadingf, setLoadingf] = useState(false)
   const handleGenerateCaptions2 = async (originalVideoUrl: string) => {
-    if (loadingf) {
-      return;
+    if (loadingf || step > 1) {
+      return; // Prevent API call if it's already in progress or the step is completed
     }
     setLoadingf(true);
     setState((prevState) => ({
@@ -220,24 +262,23 @@ export default function CaptionGenerator() {
 
     // Create FormData to send the video file to the backend
     const formData = new FormData();
-
-    formData.append("originalVideoUrl", originalVideoUrl); // Make sure this name is the same 
+    formData.append("originalVideoUrl", originalVideoUrl);
     formData.append("data", JSON.stringify({ state }));
+
     try {
       const response = await fetch("pages/api/uploadToFal", {
         method: "POST",
         body: formData,
       });
 
+      // Handle the response as needed
+      const result = await response.json();
+      // Process the result if necessary
     } catch (error) {
       console.error("Error:", error);
       alert("Error uploading video.");
-      setState((prevState) => ({
-        ...prevState,
-        isUploading: false,
-      }));
-    }
-    finally {
+    } finally {
+      setLoadingf(false);
     }
   };
   const handleGenerateCaptions3 = async () => {
@@ -248,20 +289,57 @@ export default function CaptionGenerator() {
 
     // Create FormData to send the video file to the backend
     const formData = new FormData();
-    formData.append("userid", user.id);
-    formData.append("originalVideoUrl", responseData.originalVideoUrl); // Make sure this name is the same 
+    console.log('responseData', responseData); // Make sure this name is the same 
     formData.append("downloadLink", responseData.downloadLink);
     // Make sure this name is the same as what the backend expects
-    formData.append("fileName", state.videoFile?.name); // Make sure this name is the same as what the backend expects
-
     formData.append("data", JSON.stringify({ state }));
+    setStep(4)
     try {
       const response = await fetch("pages/api/finalSave", {
         method: "POST",
         body: formData,
       });
-      const data = await response.json
+      const data = await response.json()
+      // setResponseData(data);
+      setStep(0)
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error Saving Data video.");
+    } finally {
+      setState((prevState) => ({
+        ...prevState,
+        isUploading: false,
+      }));
+    }
+
+
+  };
+  const handleGenerateCaptions4 = async () => {
+    setState((prevState) => ({
+      ...prevState,
+      isUploading: true,
+    }));
+
+    // Create FormData to send the video file to the backend
+    const formData = new FormData();
+    console.log('responseData', responseData);
+    formData.append("userid", localStorage.getItem('userid') || user.id);
+    formData.append("originalVideoUrl", responseData.originalVideoUrl); // Make sure this name is the same 
+    formData.append("downloadLink", responseData.downloadLink);
+    formData.append("captionedVideoUrl", responseData.captionedVideoUrl);
+    // Make sure this name is the same as what the backend expects
+    formData.append("fileName", state.videoFile?.name); // Make sure this name is the same as what the backend expects
+
+    formData.append("data", JSON.stringify({ state }));
+    setStep(4)
+    try {
+      const response = await fetch("pages/api/finalDBSave", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json()
       setResponseData(data);
+      setStep(0)
     } catch (error) {
       console.error("Error:", error);
       alert("Error Saving Data video.");
@@ -384,14 +462,16 @@ export default function CaptionGenerator() {
               </CollapsibleContent>
             </Collapsible>
 
-            <Button disabled={state.isUploading} onClick={handleGenerateCaptions} className="w-full bg-indigo-500 hover:bg-indigo-600">
+            <Button
+              disabled={state.isUploading} 
+              onClick={handleGenerateCaptions} className="w-full bg-indigo-500 hover:bg-indigo-600">
               Generate Captions
             </Button>
           </div>
 
           {/* Right Panel - Preview */}
           <div className="mx-auto w-full border bg-white mt-6 md:mt-0 ml-6 p-4 md:p-6 rounded-lg shadow-md flex flex-col md:flex-row items-center justify-center">
-            {responseData?.captionedVideoUrl ? (
+            {responseData?.fileName ? (
               <>
                 <div className="captioned w-full md:w-auto grid space-y-4 md:space-y-0 md:grid-cols-1 md:max-w-3xl">
                   <Label className="mx-4 my-2 text-lg font-semibold text-slate-800 text-center md:text-left">Captioned Video</Label>
@@ -409,16 +489,16 @@ export default function CaptionGenerator() {
                     </p>
 
                     <p className="text-slate-800 text-lg mb-2">
-                      <b>Subtitle Position:</b> {responseData.parameters.subtitlePosition}
+                      <b>Subtitle Position:</b> {responseData.parameters?.subtitlePosition}
                     </p>
                     <p className="text-slate-800 text-lg mb-2">
-                      <b>Font Size:</b> {responseData.parameters.font_size}
+                      <b>Font Size:</b> {responseData.parameters?.fontSize}
                     </p>
                     <p className="text-slate-800 text-lg mb-2">
-                      <b>Font Style:</b> {responseData.parameters.fontStyle}
+                      <b>Font Style:</b> {responseData.parameters?.fontStyle}
                     </p>
                     <p className="text-slate-800 text-lg">
-                      <b>Text Color:</b> {responseData.parameters.textColor}
+                      <b>Text Color:</b> {responseData.parameters?.textColor}
                     </p>
 
                     <p className="text-slate-800 text-lg mb-2">

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from 'cloudinary';
-import VideoModel from '../../../models/Video'; // Import the Mongoose model
-import { connectMongo } from '../../../../lib/mongo'; // Import MongoDB connection function
 import { fal } from "@fal-ai/client";
 
 
@@ -18,15 +16,11 @@ export const config = {
     bodyParser: false, // Disable the default body parser for file uploads
   },
 };
-interface CloudinaryUploadResult {
-  public_id: string;
-  bytes: number;
-  duration?: number
-}
+
 fal.config({
   credentials: process.env.FAL_KEY
 });
-await connectMongo();
+
 export async function POST(req: NextRequest) {
   try {
     // Parse the incoming request

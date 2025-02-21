@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
     const { subtitlePosition, fontSize, fontStyle, textColor } = statedata;
 
     // Start the Fal AI processing asynchronously without blocking the response
-    fal.subscribe("fal-ai/auto-caption", {
+    const result2 = await 
+     fal.subscribe("fal-ai/auto-caption", {
       input: {
         video_url: originalVideoUrl,
         top_align: subtitlePosition,
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
       webhookUrl: process.env.FAL_AI_WEBHOOK_URL,  // Set this to your webhook URL
     });
 
+    console.log('result2:', result2);
     // Send an immediate response back to the client that processing has started
     return NextResponse.json({ message: "Video processing started, you will receive updates." }, { status: 200 });
 
