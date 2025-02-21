@@ -24,12 +24,13 @@ import {
 import "@uploadcare/react-uploader/core.css";
 import { ChevronDown, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-
+import { io } from "socket.io-client";
 interface VideoType {
   _id: string;
   originalVideoUrl: string;
   captionedVideoUrl: string;
 }
+import { Progress } from "@/components/ui/progress"
 
 interface State {
   isAdvancedOpen: boolean;
@@ -51,10 +52,61 @@ interface State {
 }
 
 export default function CaptionGenerator() {
-  const { user } = useUser();
+  const { user, isSignedIn } = useUser();
+  const [step, setStep] = useState(0)
   const [previous, setPrevious] = useState<VideoType[]>([]);
   const [responseData, setResponseData] = useState<any>(null);
+  useEffect(() => {
+    // Connect to Socket.io server
+    const socket = io();
 
+    // Listen for the webhook event
+    socket.on('webhookEvent1', (data) => {
+      if (step == 0) {
+        setStep(1);
+        setResponseData({
+          ...responseData,
+          originalVideoUrl: data.orgUrl,
+        });
+        // alert("Step 1 done");
+        if (!loadingf) {
+          handleGenerateCaptions2(data.orgUrl);
+        }
+      }
+      // This will show an alert when the event is triggered
+    });
+    socket.on('webhookEvent2', (data) => {
+      setLoadingf(false);
+
+      // Check if the message indicates quota exceeded
+      if (data.message && data.message === 'Quota exceeded') {
+        // Handle the quota exceeded scenario
+        setState((prevState) => ({
+          ...prevState,
+          isUploading: false,
+        }));
+        alert("Quota exceeded. Please check your plan or try again later.");
+        setStep(0); // Optionally reset the step if quota exceeded, or adjust flow as needed
+        return; // Exit early if quota is exceeded
+      }
+      // Handle the case when video processing is done and we receive the download link
+      if (data.downloadLink) {
+        setResponseData((prevState) => ({
+          ...prevState,
+          downloadLink: data.downloadLink,
+        }));
+        setStep(2);
+        // Proceed with the next steps after processing the video
+        handleGenerateCaptions3();
+      }
+    });
+
+    if (step == 3) {
+      return () => {
+        socket.disconnect(); // Clean up the socket connection on unmount
+      };
+    }
+  }, [step]);
   useEffect(() => {
     const getPrevious = async () => {
       if (user) {
@@ -86,6 +138,9 @@ export default function CaptionGenerator() {
     subtitlePosition: "bottom",
   });
 
+  useEffect(() => {
+    console.log('state', state);
+  }, [state])
   const uploaderRef = useRef<UploadCtxProvider | null>(null);
 
   // Handle file selection from FileUploaderRegular
@@ -98,7 +153,6 @@ export default function CaptionGenerator() {
     if (event.successCount === 1) {
       const file = event.successEntries[0].file;
       const cdnUrl = event.successEntries[0].cdnUrl;
-
       setState((prevState) => ({
         ...prevState,
         videoFile: file, // File type
@@ -115,7 +169,8 @@ export default function CaptionGenerator() {
 
   // Handle drag-and-drop file uploads
   const handleGenerateCaptions = async () => {
-    if (!user) {
+    console.log('isSignedIn', isSignedIn);
+    if (!isSignedIn) {
       alert("Please sign in to continue");
       return;
     }
@@ -131,30 +186,96 @@ export default function CaptionGenerator() {
 
     // Create FormData to send the video file to the backend
     const formData = new FormData();
-    formData.append("file", state.videoFile); // Make sure this name is the same as what the backend expects
-    formData.append("data", JSON.stringify({ state }));
     formData.append("userid", user.id);
 
+    formData.append("file", state.videoFile); // Make sure this name is the same as what the backend expects
+    formData.append("data", JSON.stringify({ state }));
     try {
       const response = await fetch("pages/api/upload-video", {
         method: "POST",
         body: formData,
       });
 
-      const data = await response.json();
-      setResponseData(data);
     } catch (error) {
       console.error("Error:", error);
       alert("Error uploading video.");
+      setState((prevState) => ({
+        ...prevState,
+        isUploading: false,
+      }));
+    } finally {
+    }
+
+  };
+  const [loadingf, setLoadingf] = useState(false)
+  const handleGenerateCaptions2 = async (originalVideoUrl: string) => {
+    if (loadingf) {
+      return;
+    }
+    setLoadingf(true);
+    setState((prevState) => ({
+      ...prevState,
+      isUploading: true,
+    }));
+
+    // Create FormData to send the video file to the backend
+    const formData = new FormData();
+
+    formData.append("originalVideoUrl", originalVideoUrl); // Make sure this name is the same 
+    formData.append("data", JSON.stringify({ state }));
+    try {
+      const response = await fetch("pages/api/uploadToFal", {
+        method: "POST",
+        body: formData,
+      });
+
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error uploading video.");
+      setState((prevState) => ({
+        ...prevState,
+        isUploading: false,
+      }));
+    }
+    finally {
+    }
+  };
+  const handleGenerateCaptions3 = async () => {
+    setState((prevState) => ({
+      ...prevState,
+      isUploading: true,
+    }));
+
+    // Create FormData to send the video file to the backend
+    const formData = new FormData();
+    formData.append("userid", user.id);
+    formData.append("originalVideoUrl", responseData.originalVideoUrl); // Make sure this name is the same 
+    formData.append("downloadLink", responseData.downloadLink);
+    // Make sure this name is the same as what the backend expects
+    formData.append("fileName", state.videoFile?.name); // Make sure this name is the same as what the backend expects
+
+    formData.append("data", JSON.stringify({ state }));
+    try {
+      const response = await fetch("pages/api/finalSave", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json
+      setResponseData(data);
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error Saving Data video.");
     } finally {
       setState((prevState) => ({
         ...prevState,
         isUploading: false,
       }));
     }
+
+
   };
 
-  const handleAdvancedSettingChange = (key:string, value: any) => {
+  const handleAdvancedSettingChange = (key: string, value: any) => {
     setState((prevState) => ({
       ...prevState,
       [key]: value,
@@ -179,8 +300,7 @@ export default function CaptionGenerator() {
               {/* FileUploaderRegular Component */}
               <div className="mt-2 border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50">
                 <FileUploaderRegular
-                  onCommonUploadSuccess={handleFileUpload}
-                  apiRef={uploaderRef}
+                  onCommonUploadSuccess={e => handleFileUpload(e)}
                   ctxName="uc-light"
                   sourceList="local, camera, facebook, gdrive"
                   cameraModes="video"
@@ -330,6 +450,8 @@ export default function CaptionGenerator() {
                   repeat={Infinity}
                   className="text-2xl mb-2"
                 />
+                <Progress value={(step + 1) * 25} />
+
               </div>
             ) : (
               <div className="text-gray-400 text-center">
@@ -342,7 +464,7 @@ export default function CaptionGenerator() {
       </div>
 
       <div className="mx-6">
-        {previous.map((video) => (
+        {previous?.map((video) => (
           <div key={video._id}>
             <hr />
             <div className="flex flex-col md:flex-row justify-around mb-2 space-y-4 md:space-y-0">
@@ -351,7 +473,7 @@ export default function CaptionGenerator() {
                 <Label className="mx-4 md:mx-32 md:my-3 text-slate-900 text-lg font-semibold text-center md:text-left">
                   Original Video
                 </Label>
-                <video controls className="w-4/5 md:w-3/5 mx-auto max-w-3xl rounded-lg">
+                <video loading="lazy" controls className="w-4/5 md:w-3/5 mx-auto max-w-3xl rounded-lg">
                   <source src={video.originalVideoUrl} type="video/mp4" />
                   Your browser does not support the video tag.
                 </video>
@@ -362,7 +484,7 @@ export default function CaptionGenerator() {
                 <Label className="mx-4 md:mx-32 md:my-3 text-slate-900 text-lg font-semibold text-center md:text-left">
                   Captioned Video
                 </Label>
-                <video controls className="w-4/5 md:w-3/5 mx-auto max-w-3xl rounded-lg">
+                <video loading="lazy" controls className="w-4/5 md:w-3/5 mx-auto max-w-3xl rounded-lg">
                   <source src={video.captionedVideoUrl} type="video/mp4" />
                   Your browser does not support the video tag.
                 </video>

@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const data = await req.formData();
     const file = data.get('file') as File; // Type cast to `File` for type safety
     const statedata = JSON.parse(data.get('data') as string).state;
-    const userid = data.get('userid') as string;
+
 
     // Validate required parameters
     if (!file) {
@@ -42,12 +42,6 @@ export async function POST(req: NextRequest) {
     if (!statedata) {
       throw new Error("State data is missing.");
     }
-
-    // Log data for debugging purposes
-    console.log('data:', data);
-    console.log('file:', file);
-    console.log('file.name:', file.name);
-    console.log('userid:', userid);
 
     // Extract subtitle customization parameters
     const {
@@ -67,117 +61,28 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(bytes);
 
     // Upload the video to Cloudinary
-    const cloudinaryResult = await new Promise<CloudinaryUploadResult>((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          resource_type: "video",
-          folder: "video-uploads",
-          transformation: [
-            { quality: "auto", fetch_format: "mp4" },
-          ]
-        },
-        (error, result) => {
-          if (error) {
-            reject(new Error(`Cloudinary upload failed: ${error.message}`));
-          } else {
-            resolve(result as CloudinaryUploadResult);
-          }
+    cloudinary.uploader.upload_stream(
+      {
+        resource_type: "video",
+        folder: "video-uploads",
+        transformation: [
+          { quality: "auto", fetch_format: "mp4" },
+        ],
+        // Webhook URL to notify when upload completes or has issues
+        notification_url: process.env.CLOUDINARY_WEBHOOK_URL, // Set this to your webhook URL
+      },
+      (error, result) => {
+        if (error) {
+          console.error("Cloudinary upload error:", error);
+        } else {
+          console.log("Upload result:", result);
         }
-      );
-      uploadStream.end(buffer);
-    });
+      }
+    ).end(buffer);
 
-    console.log('cloudinaryResult:', cloudinaryResult);
 
-    // Process the video for captions using Fal AI
-    const result2 = await fal.subscribe("fal-ai/auto-caption", {
-      input: {
-        video_url: cloudinaryResult.url,
-        top_align: subtitlePosition,
-        font_size: fontSize,
-        txt_font: fontStyle,
-        txt_color: textColor,
-      },
-      logs: true,
-      onQueueUpdate: (update) => {
-        if (update.status === "IN_PROGRESS") {
-          update.logs.map((log) => log.message).forEach(console.log);
-        }
-      },
-    });
+    return NextResponse.json({ message: "Upload in progress" }, { status: 200 });
 
-    // Handle possible failure in captioning
-    if (!result2 || !result2.data || !result2.data.video_url) {
-      throw new Error("Fal AI failed to generate captioned video.");
-    }
-
-    console.log('result2:', result2);
-
-    // Fetch the captioned video URL from Fal AI
-    const captionedVideoUrlFromFalAI = result2.data.video_url;
-
-    // Upload the captioned video to Cloudinary
-    const captionedCloudinaryResult = await new Promise<CloudinaryUploadResult>(async (resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          resource_type: "video",
-          folder: "video-uploads",
-          transformation: [
-            { quality: "auto", fetch_format: "mp4" },
-          ]
-        },
-        (error, result) => {
-          if (error) {
-            reject(new Error(`Cloudinary upload of captioned video failed: ${error.message}`));
-          } else {
-            resolve(result as CloudinaryUploadResult);
-          }
-        }
-      );
-
-      // Fetch the video from Fal AI and convert it to a buffer for uploading
-      const captionedBuffer = await fetch(captionedVideoUrlFromFalAI)
-        .then((res) => res.arrayBuffer())
-        .then((buffer) => Buffer.from(buffer))
-        .catch((err) => {
-          throw new Error(`Failed to fetch captioned video from Fal AI: ${err.message}`);
-        });
-
-      uploadStream.end(captionedBuffer);
-    });
-
-    console.log('captionedCloudinaryResult:', captionedCloudinaryResult);
-
-    // Save the video data in the database (MongoDB)
-    const video = new VideoModel({
-      userid,
-      originalVideoUrl: cloudinaryResult.url,
-      captionedVideoUrl: captionedCloudinaryResult.url,
-      fileName: file.name,
-      downloadLink: result2.data.video_url,
-      parameters: {
-        subtitlePosition,
-        fontSize,
-        fontStyle,
-        textColor,
-      },
-    });
-    await video.save();
-
-    // Return the response with original and captioned video URLs
-    return NextResponse.json({
-      userid,
-      originalVideoUrl: cloudinaryResult.url,
-      captionedVideoUrl: captionedCloudinaryResult.url,
-      fileName: file.name,
-      downloadLink: result2.data.video_url,
-      parameters: {
-        subtitlePosition,
-        fontSize,
-        fontStyle,
-        textColor,
-      },
-    });
 
   } catch (error) {
     // Catch and handle errors

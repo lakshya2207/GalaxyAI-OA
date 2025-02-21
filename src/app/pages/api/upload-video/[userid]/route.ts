@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
         const videos = await VideoModel.find({ userid }); // Filter by `userid`
 
         if (videos.length === 0) {
-            return NextResponse.json({ message: "No videos found for this user." }, { status: 404 });
+            return NextResponse.json({ message: "No videos found for this user." }, { status: 200 });
         }
 
         // Return the filtered videos as JSON
