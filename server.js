@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import next from "next";
 import { Server } from "socket.io";
+import cors from "cors";  // Import CORS
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
@@ -12,17 +13,20 @@ const handler = app.getRequestHandler();
 
 app.prepare().then(() => {
   const httpServer = createServer((req, res) => {
-    // Custom webhook handling
-    if (req.url === "/api/webhook1" && req.method === "POST") {
-      handleWebhook(req, res, "webhookEvent1");
-    } else if (req.url === "/api/webhook2" && req.method === "POST") {
-      handleWebhook(req, res, "webhookEvent2");
-    } else if (req.url === "/api/webhook3" && req.method === "POST") {
-      handleWebhook(req, res, "webhookEvent3");
-    } else {
-      // For all other requests (including API routes), pass to Next.js handler
-      handler(req, res);
-    }
+    // Use CORS middleware before handling requests
+    cors()(req, res, () => {
+      // Custom webhook handling
+      if (req.url === "/api/webhook1" && req.method === "POST") {
+        handleWebhook(req, res, "webhookEvent1");
+      } else if (req.url === "/api/webhook2" && req.method === "POST") {
+        handleWebhook(req, res, "webhookEvent2");
+      } else if (req.url === "/api/webhook3" && req.method === "POST") {
+        handleWebhook(req, res, "webhookEvent3");
+      } else {
+        // For all other requests (including API routes), pass to Next.js handler
+        handler(req, res);
+      }
+    });
   });
 
   const io = new Server(httpServer);
