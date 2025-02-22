@@ -1,9 +1,12 @@
+
 import { createServer } from "node:http";
 import next from "next";
 import { Server } from "socket.io";
 import cors from "cors";  // Import CORS
 
-const dev = process.env.NODE_ENV !== "production";
+const dev = process.env.NODE_ENV === "production";
+console.log(dev)
+console.log(process.env.NODE_ENV)
 const hostname = "localhost";
 const port = 3000;
 
