@@ -88,7 +88,7 @@ export default function CaptionGenerator() {
   }, [responseData.downloadLink, responseData.originalVideoUrl, responseData.captionedVideoUrl])
   useEffect(() => {
     // Connect to Socket.io server
-    const socket = io();
+    const socket = io('http://localhost:3000');
 
     // Listen for the webhook event
     socket.on('webhookEvent1', (data) => {
